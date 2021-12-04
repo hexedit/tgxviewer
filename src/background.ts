@@ -1,40 +1,60 @@
 'use strict';
 
-import { app, protocol, BrowserWindow } from 'electron';
-import { createProtocol } from 'vue-cli-plugin-electron-builder/lib';
+// #region imports
+
+import {
+    app,
+    BrowserWindow,
+    dialog,
+    ipcMain as ipc,
+    protocol,
+    shell,
+} from 'electron';
 import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer';
+import * as path from 'path';
+import { createProtocol } from 'vue-cli-plugin-electron-builder/lib';
+import { OpenFolderResult } from './tgxviewer/api';
+import { TelegramExport } from './tgxviewer/tgexport';
+
+// #endregion imports
+
 const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// #region Electron Init
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
-    { scheme: 'app', privileges: { secure: true, standard: true } }
+    { scheme: 'app', privileges: { secure: true, standard: true } },
 ]);
 
 async function createWindow() {
     // Create the browser window.
-    const win = new BrowserWindow({
-        width: 800,
-        height: 600,
+    const window = new BrowserWindow({
+        width: 1350,
+        height: 700,
         webPreferences: {
-
-            // Use pluginOptions.nodeIntegration, leave this alone
-            // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
-            nodeIntegration: (process.env
-                .ELECTRON_NODE_INTEGRATION as unknown) as boolean,
-            contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
-        }
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
+            preload: path.resolve(__dirname, 'preload.js'),
+        },
     });
 
     if (process.env.WEBPACK_DEV_SERVER_URL) {
-    // Load the url of the dev server if in development mode
-        await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL as string);
-        if (!process.env.IS_TEST) win.webContents.openDevTools();
+        // Load the url of the dev server if in development mode
+        await window.loadURL(process.env.WEBPACK_DEV_SERVER_URL as string);
+        if (!process.env.IS_TEST) window.webContents.openDevTools();
     }
     else {
         createProtocol('app');
         // Load the index.html when not in development
-        win.loadURL('app://./index.html');
+        window.loadURL('app://./index.html');
     }
+
+    window.webContents.on('new-window', (e, url) => {
+        e.preventDefault();
+        shell.openExternal(url);
+    });
 }
 
 // Quit when all windows are closed.
@@ -57,11 +77,11 @@ app.on('activate', () => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
     if (isDevelopment && !process.env.IS_TEST) {
-    // Install Vue Devtools
+        // Install Vue Devtools
         try {
             await installExtension(VUEJS_DEVTOOLS);
         }
-        catch (e) {
+        catch (e: any) {
             console.error('Vue Devtools failed to install:', e.toString());
         }
     }
@@ -83,3 +103,46 @@ if (isDevelopment) {
         });
     }
 }
+
+// #endregion Electron Init
+
+const tgExport = new TelegramExport();
+
+ipc.handle(
+    'tgexport:open',
+    async (e): Promise<OpenFolderResult | undefined> => {
+        const win = BrowserWindow.fromWebContents(e.sender);
+        if (!win) return;
+        const dir = await dialog.showOpenDialog(win, {
+            properties: ['openDirectory'],
+        });
+        if (dir.canceled) return;
+        if (!(await tgExport.open(dir.filePaths[0]))) return;
+        return {
+            // assuming the succeeded open fills all values
+            // use some empty alternatives to prevent type checking errors
+            path: tgExport.path(),
+            userId: tgExport.userId || 0,
+            userName: tgExport.userName || '',
+            fullName: tgExport.fullName || '',
+            profilePicture: tgExport.profilePicture || '',
+            chats: tgExport.listChats(),
+        };
+    }
+);
+
+ipc.handle('tgexport:session-count', () => {
+    return tgExport.sessionCount;
+});
+
+ipc.handle('tgexport:message-count', (e, chatId) => {
+    return tgExport.messageCount(chatId);
+});
+
+ipc.handle('tgexport:list-sessions', () => {
+    return tgExport.listSessions();
+});
+
+ipc.handle('tgexport:list-messages', (e, chatId) => {
+    return tgExport.listMessages(chatId);
+});
