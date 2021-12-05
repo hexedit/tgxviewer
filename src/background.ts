@@ -36,6 +36,7 @@ async function createWindow() {
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true,
+            webSecurity: false,
             preload: path.resolve(__dirname, 'preload.js'),
         },
     });
@@ -127,6 +128,7 @@ ipc.handle(
             fullName: tgExport.fullName || '',
             profilePicture: tgExport.profilePicture || '',
             chats: tgExport.listChats(),
+            sessions: tgExport.listSessions(),
         };
     }
 );

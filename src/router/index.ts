@@ -1,6 +1,8 @@
 import Vue from 'vue';
 import VueRouter, { RouteConfig } from 'vue-router';
 import Home from '../views/Home.vue';
+import Chat from '../views/Chat.vue';
+import Sessions from '../views/Sessions.vue';
 
 Vue.use(VueRouter);
 
@@ -9,6 +11,16 @@ const routes: Array<RouteConfig> = [
         path: '/',
         name: 'Home',
         component: Home
+    },
+    {
+        path: '/chat/:id',
+        name: 'Chat',
+        component: Chat,
+    },
+    {
+        path: '/sessions',
+        name: 'Sessions',
+        component: Sessions,
     },
     {
         path: '/about',

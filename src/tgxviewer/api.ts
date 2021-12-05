@@ -6,7 +6,8 @@ export interface OpenFolderResult {
     userName: string;
     fullName: string;
     profilePicture: string;
-    chats: Array<Chat>;
+    chats: Chat[];
+    sessions: Session[];
 }
 
 export interface IElectronAPI {

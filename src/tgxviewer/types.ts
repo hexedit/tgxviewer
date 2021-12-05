@@ -25,6 +25,7 @@ export interface Chat {
     name: string;
     type: string;
     icon: string | null;
+    count: number;
 }
 
 export interface MessageMedia {

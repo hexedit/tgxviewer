@@ -122,6 +122,7 @@ export class TelegramExport {
                     name: tgxChat.name,
                     type: tgxChat.type,
                     icon: null,
+                    count: tgxChat.messages.length,
                 });
                 messages[tgxChat.id] = [];
                 for (const tgxMessage of tgxChat.messages) {
