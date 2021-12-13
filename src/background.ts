@@ -47,6 +47,7 @@ async function createWindow() {
         if (!process.env.IS_TEST) window.webContents.openDevTools();
     }
     else {
+        window.setMenu(null);
         createProtocol('app');
         // Load the index.html when not in development
         window.loadURL('app://./index.html');

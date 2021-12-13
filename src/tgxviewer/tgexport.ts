@@ -137,6 +137,7 @@ export class TelegramExport {
                             },
                             text: tgxMessage.text,
                             forwardedFrom: tgxMessage.forwarded_from,
+                            replyTo: tgxMessage.reply_to_message_id,
                         };
 
                         if (tgxMessage.type === 'service') {

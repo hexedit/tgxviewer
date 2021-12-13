@@ -5,10 +5,14 @@
                 {{ chatName }}
             </v-toolbar-title>
         </v-toolbar>
+        <v-alert v-if="messages.length === 0" type="info">
+            Loading messages...
+        </v-alert>
         <chat-message
             v-for="message of messages"
             :key="message.id"
             :message="message"
+            :quote="getMessage(message.replyTo)"
         />
     </div>
 </template>
@@ -49,6 +53,11 @@ export default class ChatView extends Vue {
     async onChatChanged(): Promise<void> {
         this.messages = [];
         this.messages = await window.api.listMessages(this.chatId);
+    }
+
+    getMessage(id?: number): Message | undefined {
+        if (!id) return;
+        return this.messages.find((m) => m.id === id);
     }
 
 }

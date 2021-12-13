@@ -45,6 +45,13 @@ export interface ServiceMessage {
     };
 }
 
+export interface TypedPart {
+    type: string;
+    text: string;
+}
+
+export type TextPart = string | TypedPart;
+
 export interface Message {
     id: number;
     type: string;
@@ -53,10 +60,11 @@ export interface Message {
         id: number;
         name: string;
     };
-    text: string | Array<any>;
+    text: string | TextPart[];
     forwardedFrom?: string;
+    replyTo?: number;
     media?: MessageMedia;
     service?: ServiceMessage;
 }
 
-export type ChatMessages = { [key: number]: Array<Message> };
+export type ChatMessages = { [key: number]: Message[] };

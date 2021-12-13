@@ -27,7 +27,54 @@
                     {{ message.forwardedFrom }}
                 </span>
             </v-card-subtitle>
-            <v-card-text v-html="messageText" />
+            <v-card-text>
+                <v-alert v-if="quote" border="left" colored-border>
+                    <v-card elevation="0">
+                        <v-card-text style="margin: 0; padding: 0">
+                            <h4 style="font-weight: bold;">
+                                {{ quote.from.name }}
+                                @
+                                {{ quote.date.toLocaleString() }}
+                            </h4>
+                            <tgx-text
+                                v-if="quote.type === 'message'"
+                                :text="quote.text"
+                            />
+                            <tgx-media
+                                v-else-if="quote.type === 'media'"
+                                :media="quote.media"
+                            />
+                            <template v-else-if="quote.type === 'service'">
+                                <span class="actor">
+                                    {{
+                                        quote.service.actor.name ||
+                                            'Deleted Account'
+                                    }}
+                                </span>
+                                &nbsp;
+                                <span class="action">{{
+                                    quote.service.action
+                                }}</span>
+                                &nbsp;@&nbsp;
+                                <span class="date">
+                                    {{ quote.date.toLocaleString() }}
+                                </span>
+                            </template>
+                        </v-card-text>
+                    </v-card>
+                </v-alert>
+                <tgx-text
+                    v-if="message.type === 'message'"
+                    :text="message.text"
+                />
+                <tgx-media
+                    v-else-if="message.type === 'media'"
+                    :media="message.media"
+                />
+                <v-alert v-else type="error">
+                    Unsupported message type [{{ message.type }}]
+                </v-alert>
+            </v-card-text>
         </v-card>
     </div>
 </template>
@@ -54,37 +101,35 @@
     .from {
         margin-left: 0.5em;
     }
-
-    img {
-        max-height: 300px;
-
-        &.sticker {
-            max-height: 150px;
-        }
-
-        &.preview {
-            max-height: 150px;
-            display: block;
-        }
-    }
 }
 </style>
 
 <script lang="ts">
 import { Message } from '@/tgxviewer/types';
 import { Component, Prop, Vue } from 'vue-property-decorator';
+import TgxMedia from './Media.vue';
+import TgxText from './Text.vue';
 
-@Component
+@Component({
+    components: {
+        TgxMedia,
+        TgxText,
+    },
+})
 export default class ChatMessage extends Vue {
 
     @Prop({ required: true })
     message!: Message;
+
+    @Prop({ default: undefined })
+    quote?: Message;
 
     get isService(): boolean {
         return this.message.type === 'service';
     }
 
     get fromTag(): string {
+        if (!this.message.from.name) return '';
         return this.message.from.name[0];
     }
 
@@ -110,126 +155,6 @@ export default class ChatMessage extends Vue {
             'grey',
         ];
         return colors[this.message.from.id % colors.length];
-    }
-
-    get messageText(): string {
-        switch (this.message.type) {
-
-            case 'message':
-                return this.makeText(this.message.text);
-            case 'media':
-                return this.makeMedia(this.message);
-
-        }
-        return `<div class="unsupported">Unsupported message type: ${this.message.type}</div>`;
-    }
-
-    private makeText(text: string | any[]): string {
-        if (!text) return '';
-
-        if (typeof text === 'string') {
-            return text;
-        }
-
-        let result = '';
-        for (const part of text) {
-            if (typeof part === 'string') {
-                result += part;
-            }
-            else {
-                switch (part.type) {
-
-                    case 'bold':
-                        result += `<b>${part.text}</b>`;
-                        break;
-                    case 'link':
-                        result += `<a href="${part.text}" target="_blank">${part.text}</a>`;
-                        break;
-                    case 'mention':
-                        result += `<a href="http://t.me/${part.text.substring(
-                            1
-                        )}" target="_blank">${part.text.substring(1)}</a>`;
-                        break;
-                    case 'email':
-                        result += `<a href="mailto:${part.text}">${part.text}</a>`;
-                        break;
-                    case 'pre':
-                        result += `<pre>${part.text}</pre>`;
-                        break;
-                    case 'code':
-                        result += `<code>${part.text}</code>`;
-                        break;
-                    case 'text_link':
-                    case 'mention_name':
-                    case 'phone':
-                    case 'hashtag':
-                    case 'bot_command':
-                        result += `<a href="#!">${part.text}</a>`;
-                        break;
-                    default:
-                        result += `<div class="unsupported"><code>['${part.text}' == ${part.type}]</code></div>`;
-
-                }
-            }
-        }
-        return result;
-    }
-
-    private makeMedia(message: Message) {
-        if (!message.media) return '';
-
-        let result = '';
-        switch (message.media.type) {
-
-            case 'sticker':
-                result = `<img class="sticker" src="${message.media.file}" alt="${message.media.stickerEmoji}">`;
-                break;
-            case 'photo':
-                result = `<img class="materialboxed" src="${message.media.file}" alt="">`;
-                break;
-            case 'voice_message':
-            case 'audio_file':
-                result = `<audio src="${message.media.file}" controls></audio>`;
-                break;
-            case 'animation':
-            case 'video_message':
-            case 'video_file':
-                result = `<video ${
-                    message.media.type === 'animation'
-                        ? 'autoplay loop'
-                        : 'controls'
-                } width="400" height="300"><source src="${
-                    message.media.file
-                }"></video>`;
-                break;
-            case 'file': {
-                if (!message.media.file) break;
-                let preview = '';
-                if (
-                    message.media.mediaType &&
-                    message.media.mediaType.startsWith('image/')
-                ) {
-                    preview = `<img class="preview" src="${
-                        message.media.file
-                    }" alt="${message.media.file.split(/[\\/]/).pop()}">`;
-                }
-                result = `<a href="${
-                    message.media.file
-                }" download>${preview}${message.media.file
-                    .split(/[\\/]/)
-                    .pop()}</a>`;
-                break;
-            }
-            default:
-                result = `<div class="unsupported">[MEDIA TYPE ${message.media.type}]</div>`;
-
-        }
-        if (message.text) {
-            result = `<div>${result}</div><div>${this.makeText(
-                message.text
-            )}</div>`;
-        }
-        return result;
     }
 
 }
